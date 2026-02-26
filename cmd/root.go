@@ -1,4 +1,4 @@
-// Package cmd implements the readmeaker CLI commands.
+// Package cmd implements the go-readme CLI commands.
 package cmd
 
 import (
@@ -9,9 +9,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "readmeaker",
-	Short: "readmeaker – README automation CLI for Go projects",
-	Long: `readmeaker automatically generates and maintains high-quality README files
+	Use:   "go-readme",
+	Short: "go-readme – README automation CLI for Go projects",
+	Long: `go-readme automatically generates and maintains high-quality README files
 for Go projects by intelligently parsing project metadata and repository structure.`,
 }
 
