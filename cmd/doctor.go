@@ -13,7 +13,7 @@ var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose common project configuration issues",
 	Long: `doctor checks whether the current directory is correctly set up for
-readmeaker: go.mod present, git initialised, remote configured, and README valid.`,
+go-readme: go.mod present, git initialised, remote configured, and README valid.`,
 	Run: runDoctor,
 }
 
@@ -38,7 +38,7 @@ func runDoctor(cmd *cobra.Command, _ []string) {
 		fmt.Fprintln(cmd.OutOrStdout())
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "readmeaker doctor")
+	fmt.Fprintln(cmd.OutOrStdout(), "go-readme doctor")
 	fmt.Fprintln(cmd.OutOrStdout())
 
 	// go.mod
