@@ -19,6 +19,8 @@ jobs:
         id: release
         with:
           release-type: go
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   goreleaser:
     needs: release-please
