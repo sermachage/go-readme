@@ -21,7 +21,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w
+      - -s -w -X github.com/sermachage/go-readme/cmd.Version={{.Version}}
 
 archives:
   - id: go-readme
