@@ -1,27 +1,44 @@
 # go-readme
 
-The definitive README automation CLI for Go projects
+`go-readme` is the definitive README automation tool for Go. It inspects any Go package using the standard `go/doc` toolchain and produces a well-structured `README.md` — no configuration required.
 
 ## Installation
 
-```bash
-go install github.com/sermachage/go-readme@latest
+```sh
+go install github.com/sermachage/go-readme/cmd/go-readme@latest
 ```
 
 ## Usage
 
-```go
-import "github.com/sermachage/go-readme"
+Run from inside a Go module to generate a `README.md` for the current directory:
+
+```sh
+go-readme
 ```
 
-## Requirements
+Or point it at a specific package directory and output file:
 
-* Go 1.24.13
+```sh
+go-readme -dir ./mypackage -output README.md
+```
 
-## Repository
+### Flags
 
-[https://github.com/sermachage/go-readme](https://github.com/sermachage/go-readme)
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-dir` | `.` | Directory of the Go package to document |
+| `-output` | `README.md` | Output file path |
+
+## What gets generated
+
+- **Title** — the package name
+- **Package doc** — the package-level documentation comment
+- **Installation** — `go install` command with the correct import path (auto-detected from `go.mod`)
+- **Functions** — all exported functions with their signatures and docs
+- **Types** — all exported types with their docs and method list
+- **Constants / Variables** — exported const and var blocks with docs
+- **License** — link to `LICENSE` file if one exists in the package directory
 
 ## License
 
-LICENSE
+See [LICENSE](LICENSE).
