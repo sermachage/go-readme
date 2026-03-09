@@ -11,8 +11,8 @@ var Version = "dev"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the readmeaker version",
+	Short: "Print the go-readme version",
 	Run: func(cmd *cobra.Command, _ []string) {
-		fmt.Fprintf(cmd.OutOrStdout(), "readmeaker %s\n", Version)
+		fmt.Fprintf(cmd.OutOrStdout(), "go-readme %s\n", Version)
 	},
 }

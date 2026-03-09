@@ -9,9 +9,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "readmeaker",
-	Short: "readmeaker – README automation CLI for Go projects",
-	Long: `readmeaker automatically generates and maintains high-quality README files
+	Use:     "go-readme",
+	Aliases: []string{"readmeaker"},
+	Short:   "go-readme – README automation CLI for Go projects",
+	Long: `go-readme automatically generates and maintains high-quality README files
 for Go projects by intelligently parsing project metadata and repository structure.`,
 }
 
