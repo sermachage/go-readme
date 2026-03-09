@@ -40,6 +40,26 @@ func TestReplace_ExistingWithMarkers(t *testing.T) {
 	}
 }
 
+func TestReplace_ExistingWithLegacyMarkers(t *testing.T) {
+	existing := "# Legacy README\n\n" +
+		markers.LegacyStartMarker + "\nold content\n" + markers.LegacyEndMarker + "\n\nNotes"
+
+	got := markers.Replace(existing, "new content")
+
+	if strings.Contains(got, "old content") {
+		t.Error("old content should have been replaced")
+	}
+	if !strings.Contains(got, "new content") {
+		t.Error("new content should be present")
+	}
+	if strings.Contains(got, markers.LegacyStartMarker) {
+		t.Error("legacy markers should be migrated to current markers")
+	}
+	if !strings.Contains(got, markers.StartMarker) {
+		t.Error("current start marker should be present")
+	}
+}
+
 func TestReplace_ExistingWithoutMarkers(t *testing.T) {
 	existing := "# Existing README\n\nSome manual content."
 
@@ -68,6 +88,14 @@ func TestReplace_Idempotent(t *testing.T) {
 
 func TestExtract(t *testing.T) {
 	content := markers.StartMarker + "\nhello world\n" + markers.EndMarker
+	got := markers.Extract(content)
+	if got != "hello world" {
+		t.Errorf("Extract = %q, want %q", got, "hello world")
+	}
+}
+
+func TestExtract_LegacyMarkers(t *testing.T) {
+	content := markers.LegacyStartMarker + "\nhello world\n" + markers.LegacyEndMarker
 	got := markers.Extract(content)
 	if got != "hello world" {
 		t.Errorf("Extract = %q, want %q", got, "hello world")

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sermachage/go-readme/internal/detectors"
 	"github.com/sermachage/go-readme/internal/domain"
+	"github.com/sermachage/go-readme/internal/markers"
 	"github.com/sermachage/go-readme/internal/parser"
 )
 
@@ -35,7 +36,7 @@ func TestGenerate_DryRunDoesNotWriteReadme(t *testing.T) {
 	if !res.Created {
 		t.Fatal("Created = false, want true for missing README")
 	}
-	if !strings.Contains(res.Content, "<!-- readmeaker:start -->") {
+	if !strings.Contains(res.Content, markers.StartMarker) {
 		t.Fatal("generated content missing managed start marker")
 	}
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); !os.IsNotExist(err) {
@@ -104,7 +105,7 @@ func TestGenerate_ForceOverwritesEntireReadme(t *testing.T) {
 	if strings.Contains(got, "Manual section") {
 		t.Fatal("manual content should be removed with Force=true")
 	}
-	if strings.Contains(got, "<!-- readmeaker:start -->") {
+	if strings.Contains(got, markers.StartMarker) || strings.Contains(got, markers.LegacyStartMarker) {
 		t.Fatal("markers should not be used when Force=true")
 	}
 }

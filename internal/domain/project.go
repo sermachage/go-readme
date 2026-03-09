@@ -1,4 +1,4 @@
-// Package domain defines the core data models used throughout readmeaker.
+// Package domain defines the core data models used throughout go-readme.
 package domain
 
 // Project holds all metadata extracted from a Go project.

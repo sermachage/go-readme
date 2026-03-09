@@ -21,17 +21,17 @@ cd go-readme
 go build ./...
 ```
 
-### Run the tests
+### Run tests
 
 ```sh
-go test -race ./...
+go test ./...
 ```
 
-### Install locally for manual testing
+### Try the CLI locally
 
 ```sh
-go install ./cmd/go-readme
-go-readme -dir ./internal/analyzer
+go install .
+go-readme generate --dry-run
 ```
 
 ---
@@ -39,10 +39,15 @@ go-readme -dir ./internal/analyzer
 ## Project layout
 
 ```
-cmd/go-readme/          # CLI entry point
+cmd/                    # Cobra commands (generate, doctor, version)
+main.go                 # go-readme entrypoint
 internal/
-  analyzer/             # Go source → Package struct (uses go/doc)
-  generator/            # Package struct → README.md (uses text/template)
+  app/                  # Application service orchestration
+  parser/               # go.mod and git metadata parsing
+  template/             # Embedded README templates
+  markers/              # Idempotent managed block replacement
+  writer/               # README read/write (atomic write path)
+  gitmeta/              # Shared git metadata helpers
 ```
 
 ---
@@ -63,8 +68,7 @@ internal/
 
    ```sh
    go build ./...
-   go vet ./...
-   go test -race ./...
+   go test ./...
    ```
 
 5. **Open a pull request** against `main`. Fill in the PR template.
@@ -73,11 +77,11 @@ internal/
 
 ## Commit style
 
-Use short, imperative present-tense commit messages:
+Use short, imperative present-tense commit messages. Examples:
 
 ```
-add -stdout flag to print README to console
-fix import-path detection for nested modules
+add --dir flag to doctor command
+fix marker migration for legacy readmeaker blocks
 ```
 
 ---
@@ -93,6 +97,12 @@ Please use the [issue templates](.github/ISSUE_TEMPLATE/) rather than opening a 
 - Standard `gofmt` formatting is required (CI will catch it).
 - Follow the conventions already established in the file you are editing.
 - Export doc-comments are required on all exported identifiers.
+
+## Documentation expectations (important)
+
+- Keep README and CONTRIBUTING updates beginner-friendly.
+- Prefer concrete examples over abstract descriptions.
+- When behavior changes, include a short "what changed" note and a command example.
 
 ---
 

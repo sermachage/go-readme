@@ -4,6 +4,9 @@
 from `go.mod` and git, renders a template, and idempotently updates `README.md`
 between managed markers so custom content is preserved.
 
+If you are new to the project, start with `go-readme generate --dry-run` to see
+what will be written before changing any files.
+
 ## Installation
 
 ```sh
@@ -61,6 +64,24 @@ go-readme generate --dir ./path/to/module
 - **Repository** — git remote URL when configured
 - **Description** — from flag or interactive prompt
 - **License** — detected from license file name
+
+## Managed markers (beginner-friendly)
+
+`go-readme` updates only the auto-managed block in your README:
+
+```md
+<!-- go-readme:start -->
+...generated content...
+<!-- go-readme:end -->
+```
+
+Anything outside this block is your manual content and is not changed.
+
+Backward compatibility:
+- Older projects may still have legacy markers:
+  `<!-- readmeaker:start -->` and `<!-- readmeaker:end -->`
+- `go-readme` still reads those legacy markers and will safely migrate them to
+  the new `go-readme` marker names on the next `generate` run.
 
 ## License
 

@@ -1,4 +1,4 @@
-// Package cmd implements the readmeaker CLI commands.
+// Package cmd implements the go-readme CLI commands.
 package cmd
 
 import (

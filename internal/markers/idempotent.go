@@ -7,9 +7,14 @@ import (
 
 const (
 	// StartMarker is placed immediately before generated content.
-	StartMarker = "<!-- readmeaker:start -->"
+	StartMarker = "<!-- go-readme:start -->"
 	// EndMarker is placed immediately after generated content.
-	EndMarker = "<!-- readmeaker:end -->"
+	EndMarker = "<!-- go-readme:end -->"
+
+	// LegacyStartMarker is kept for backward compatibility during marker migration.
+	LegacyStartMarker = "<!-- readmeaker:start -->"
+	// LegacyEndMarker is kept for backward compatibility during marker migration.
+	LegacyEndMarker = "<!-- readmeaker:end -->"
 )
 
 // Replace updates the managed section inside existing README content.
@@ -23,12 +28,10 @@ func Replace(existing, generated string) string {
 		return wrapped
 	}
 
-	start := strings.Index(existing, StartMarker)
-	end := strings.Index(existing, EndMarker)
-
-	if start >= 0 && end >= 0 && end > start {
+	start, end, endLen, found := findManagedSection(existing)
+	if found {
 		before := existing[:start]
-		after := existing[end+len(EndMarker):]
+		after := existing[end+endLen:]
 		return before + wrapped + after
 	}
 
@@ -43,11 +46,32 @@ func wrap(content string) string {
 
 // Extract returns only the content between the markers, or "" if none found.
 func Extract(content string) string {
-	start := strings.Index(content, StartMarker)
-	end := strings.Index(content, EndMarker)
-	if start < 0 || end < 0 || end <= start {
+	start, end, _, found := findManagedSection(content)
+	if !found {
 		return ""
 	}
-	inner := content[start+len(StartMarker) : end]
+
+	markerLen := len(StartMarker)
+	if strings.HasPrefix(content[start:], LegacyStartMarker) {
+		markerLen = len(LegacyStartMarker)
+	}
+
+	inner := content[start+markerLen : end]
 	return strings.TrimSpace(inner)
+}
+
+func findManagedSection(content string) (start int, end int, endLen int, found bool) {
+	start = strings.Index(content, StartMarker)
+	end = strings.Index(content, EndMarker)
+	if start >= 0 && end >= 0 && end > start {
+		return start, end, len(EndMarker), true
+	}
+
+	start = strings.Index(content, LegacyStartMarker)
+	end = strings.Index(content, LegacyEndMarker)
+	if start >= 0 && end >= 0 && end > start {
+		return start, end, len(LegacyEndMarker), true
+	}
+
+	return 0, 0, 0, false
 }
