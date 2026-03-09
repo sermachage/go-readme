@@ -61,7 +61,7 @@ func runGenerate(cmd *cobra.Command, _ []string) error {
 	}
 
 	if generateDryRun {
-		fmt.Println(result.Content)
+		fmt.Fprintln(cmd.OutOrStdout(), result.Content)
 		return nil
 	}
 
@@ -76,6 +76,9 @@ func runGenerate(cmd *cobra.Command, _ []string) error {
 // promptDescription asks the user for a short project description on stdin.
 // Returns an empty string if stdin is not a terminal or the user skips.
 func promptDescription(cmd *cobra.Command) string {
+	if fi, err := os.Stdin.Stat(); err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
+		return ""
+	}
 	fmt.Fprint(cmd.OutOrStdout(), "Project description (leave blank to skip): ")
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Scan() {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -42,19 +43,30 @@ func runDoctor(cmd *cobra.Command, _ []string) {
 	fmt.Fprintln(cmd.OutOrStdout())
 
 	// go.mod
-	_, gomodErr := os.Stat(filepath.Join(dir, "go.mod"))
-	check("go.mod present", "", gomodErr == nil)
+	gomodPath := filepath.Join(dir, "go.mod")
+	_, gomodErr := os.Stat(gomodPath)
+	gomodDetail := ""
+	if gomodErr != nil {
+		gomodDetail = "missing go.mod at " + gomodPath
+	}
+	check("go.mod present", gomodDetail, gomodErr == nil)
 
-	// git initialised
-	_, gitErr := os.Stat(filepath.Join(dir, ".git"))
-	check("git initialized", "", gitErr == nil)
+	// git initialized/worktree
+	isRepo, repoDetail := gitRepoStatus(dir)
+	check("git initialized", repoDetail, isRepo)
 
 	// remote configured
-	check("git remote.origin configured", "", hasGitRemote(dir))
+	hasRemote, remoteDetail := gitRemoteStatus(dir)
+	check("git remote.origin configured", remoteDetail, hasRemote)
 
 	// README
-	_, readmeErr := os.Stat(filepath.Join(dir, "README.md"))
-	check("README.md exists", "", readmeErr == nil)
+	readmePath := filepath.Join(dir, "README.md")
+	_, readmeErr := os.Stat(readmePath)
+	readmeDetail := ""
+	if readmeErr != nil {
+		readmeDetail = "README.md not found; run `go-readme generate`"
+	}
+	check("README.md exists", readmeDetail, readmeErr == nil)
 
 	fmt.Fprintln(cmd.OutOrStdout())
 	if allOK {
@@ -64,8 +76,35 @@ func runDoctor(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func hasGitRemote(dir string) bool {
-	c := exec.Command("git", "config", "--get", "remote.origin.url")
+func gitRepoStatus(dir string) (bool, string) {
+	out, err := gitOutput(dir, "rev-parse", "--is-inside-work-tree")
+	if err != nil {
+		return false, "not a git repository (`git init` to create one)"
+	}
+	if strings.TrimSpace(out) != "true" {
+		return false, "directory is outside a git work tree"
+	}
+	return true, ""
+}
+
+func gitRemoteStatus(dir string) (bool, string) {
+	out, err := gitOutput(dir, "config", "--get", "remote.origin.url")
+	if err != nil {
+		return false, "no remote.origin set (`git remote add origin <url>`)"
+	}
+	remote := strings.TrimSpace(out)
+	if remote == "" {
+		return false, "remote.origin is empty"
+	}
+	return true, remote
+}
+
+func gitOutput(dir string, args ...string) (string, error) {
+	c := exec.Command("git", args...)
 	c.Dir = dir
-	return c.Run() == nil
+	out, err := c.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }

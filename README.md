@@ -1,6 +1,8 @@
 # go-readme
 
-`go-readme` is the definitive README automation tool for Go. It inspects any Go package using the standard `go/doc` toolchain and produces a well-structured `README.md` — no configuration required.
+`go-readme` is a README automation CLI for Go modules. It parses project metadata
+from `go.mod` and git, renders a template, and idempotently updates `README.md`
+between managed markers so custom content is preserved.
 
 ## Installation
 
@@ -29,34 +31,42 @@ go-readme version
 
 ## Usage
 
-Run from inside a Go module to generate a `README.md` for the current directory:
+Run from inside a Go module to generate or update `README.md`:
 
 ```sh
-go-readme
+go-readme generate
 ```
 
-Or point it at a specific package directory and output file:
+Preview without writing:
 
 ```sh
-go-readme -dir ./mypackage -output README.md
+go-readme generate --dry-run
 ```
 
 ### Flags
 
+| Command | Description |
+|---------|-------------|
+| `generate` | Generate or update README content |
+| `doctor` | Check project setup (`go.mod`, git, remote, README) |
+| `version` | Print CLI version |
+
+### Generate Flags
+
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-dir` | `.` | Directory of the Go package to document |
-| `-output` | `README.md` | Output file path |
+| `--description`, `-d` | empty | Project description |
+| `--template`, `-t` | `go_default.md` | Embedded template name |
+| `--dry-run` | `false` | Print output without writing README |
+| `--force` | `false` | Overwrite entire README (skip marker replacement) |
+| `--non-interactive` | `false` | Disable interactive prompt |
 
 ## What gets generated
 
-- **Title** — the package name
-- **Package doc** — the package-level documentation comment
-- **Installation** — `go install` command with the correct import path (auto-detected from `go.mod`)
-- **Functions** — all exported functions with their signatures and docs
-- **Types** — all exported types with their docs and method list
-- **Constants / Variables** — exported const and var blocks with docs
-- **License** — link to `LICENSE` file if one exists in the package directory
+- **Title / metadata** — module name, install command, go version
+- **Repository** — git remote URL when configured
+- **Description** — from flag or interactive prompt
+- **License** — detected from license file name
 
 ## License
 
