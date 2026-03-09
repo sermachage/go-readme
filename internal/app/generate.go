@@ -15,6 +15,41 @@ import (
 	"github.com/sermachage/go-readme/internal/writer"
 )
 
+// ProjectDetector determines whether a target directory is a supported project.
+type ProjectDetector interface {
+	Detect(dir string) detectors.DetectionResult
+}
+
+// GoModReader parses go.mod metadata.
+type GoModReader interface {
+	ParseGoMod(dir string) (*parser.GoModInfo, error)
+}
+
+// GitReader parses git metadata.
+type GitReader interface {
+	ParseGit(dir string) *parser.GitInfo
+}
+
+// ProjectRenderer renders a README template from project metadata.
+type ProjectRenderer interface {
+	Render(templateName string, project domain.Project) (string, error)
+}
+
+// ReadmeStore abstracts reading and writing README files.
+type ReadmeStore interface {
+	ReadExisting(dir string) (string, error)
+	Write(dir, content string) error
+}
+
+// GenerateService orchestrates README generation dependencies.
+type GenerateService struct {
+	Detector ProjectDetector
+	GoMod    GoModReader
+	Git      GitReader
+	Renderer ProjectRenderer
+	Store    ReadmeStore
+}
+
 // GenerateOptions controls the behaviour of the Generate service.
 type GenerateOptions struct {
 	// Dir is the target project directory. Defaults to the current directory.
@@ -36,9 +71,48 @@ type GenerateResult struct {
 	Created    bool
 }
 
+type defaultGoModReader struct{}
+
+func (r defaultGoModReader) ParseGoMod(dir string) (*parser.GoModInfo, error) {
+	return parser.ParseGoMod(dir)
+}
+
+type defaultGitReader struct{}
+
+func (r defaultGitReader) ParseGit(dir string) *parser.GitInfo {
+	return parser.ParseGit(dir)
+}
+
+type defaultReadmeStore struct{}
+
+func (s defaultReadmeStore) ReadExisting(dir string) (string, error) {
+	return writer.ReadExisting(dir)
+}
+
+func (s defaultReadmeStore) Write(dir, content string) error {
+	return writer.Write(dir, content)
+}
+
+// NewGenerateService builds the default README generation service.
+func NewGenerateService() *GenerateService {
+	return &GenerateService{
+		Detector: &detectors.GoDetector{},
+		GoMod:    defaultGoModReader{},
+		Git:      defaultGitReader{},
+		Renderer: tmpl.NewRenderer(),
+		Store:    defaultReadmeStore{},
+	}
+}
+
 // Generate detects the project, extracts metadata, renders a template, and
 // writes (or updates) README.md.
 func Generate(opts GenerateOptions) (*GenerateResult, error) {
+	return NewGenerateService().Generate(opts)
+}
+
+// Generate detects the project, extracts metadata, renders a template, and
+// writes (or updates) README.md.
+func (s *GenerateService) Generate(opts GenerateOptions) (*GenerateResult, error) {
 	if opts.Dir == "" {
 		opts.Dir = "."
 	}
@@ -46,18 +120,17 @@ func Generate(opts GenerateOptions) (*GenerateResult, error) {
 		opts.Template = "go_default.md"
 	}
 
-	detector := &detectors.GoDetector{}
-	result := detector.Detect(opts.Dir)
+	result := s.Detector.Detect(opts.Dir)
 	if !result.IsGoProject {
 		return nil, fmt.Errorf("no go.mod found in %s – not a Go module project", opts.Dir)
 	}
 
-	gomod, err := parser.ParseGoMod(opts.Dir)
+	gomod, err := s.GoMod.ParseGoMod(opts.Dir)
 	if err != nil {
 		return nil, err
 	}
 
-	git := parser.ParseGit(opts.Dir)
+	git := s.Git.ParseGit(opts.Dir)
 
 	project := domain.Project{
 		Name:        moduleName(gomod.ModulePath),
@@ -68,13 +141,12 @@ func Generate(opts GenerateOptions) (*GenerateResult, error) {
 		License:     detectLicense(opts.Dir),
 	}
 
-	renderer := tmpl.NewRenderer()
-	rendered, err := renderer.Render(opts.Template, project)
+	rendered, err := s.Renderer.Render(opts.Template, project)
 	if err != nil {
 		return nil, err
 	}
 
-	existing, err := writer.ReadExisting(opts.Dir)
+	existing, err := s.Store.ReadExisting(opts.Dir)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +167,7 @@ func Generate(opts GenerateOptions) (*GenerateResult, error) {
 	}
 
 	if !opts.DryRun {
-		if err := writer.Write(opts.Dir, content); err != nil {
+		if err := s.Store.Write(opts.Dir, content); err != nil {
 			return nil, err
 		}
 	}

@@ -13,7 +13,8 @@ import (
 
 func TestRunDoctor_ShowsActionableFailures(t *testing.T) {
 	dir := t.TempDir()
-	withWorkingDir(t, dir)
+	resetDoctorFlags(t)
+	doctorDir = dir
 
 	c := &doctorCommandStub{}
 	runDoctor(c.command(), nil)
@@ -35,7 +36,8 @@ func TestRunDoctor_ShowsActionableFailures(t *testing.T) {
 
 func TestRunDoctor_AllChecksPass(t *testing.T) {
 	dir := t.TempDir()
-	withWorkingDir(t, dir)
+	resetDoctorFlags(t)
+	doctorDir = dir
 
 	writeCmdFile(t, dir, "go.mod", "module github.com/example/project\n\ngo 1.24\n")
 	writeCmdFile(t, dir, "README.md", "# Project\n")
@@ -49,7 +51,7 @@ func TestRunDoctor_AllChecksPass(t *testing.T) {
 	if !strings.Contains(out, "All checks passed.") {
 		t.Fatalf("expected success summary, got:\n%s", out)
 	}
-	if !strings.Contains(out, "https://github.com/example/project.git") {
+	if !strings.Contains(out, "https://github.com/example/project") {
 		t.Fatalf("expected remote URL detail, got:\n%s", out)
 	}
 }
@@ -122,34 +124,15 @@ func TestGitRemoteStatus_WhenRemoteExists(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected remote status true, detail=%q", detail)
 	}
-	if detail != "https://github.com/example/project.git" {
+	if detail != "https://github.com/example/project" {
 		t.Fatalf("unexpected remote detail: %q", detail)
-	}
-}
-
-func TestGitOutput_Error(t *testing.T) {
-	_, err := gitOutput(t.TempDir(), "not-a-real-git-subcommand")
-	if err == nil {
-		t.Fatal("expected gitOutput error")
-	}
-}
-
-func TestGitOutput_Success(t *testing.T) {
-	dir := t.TempDir()
-	runGit(t, dir, "init")
-
-	out, err := gitOutput(dir, "rev-parse", "--is-inside-work-tree")
-	if err != nil {
-		t.Fatalf("gitOutput: %v", err)
-	}
-	if strings.TrimSpace(out) != "true" {
-		t.Fatalf("unexpected output: %q", out)
 	}
 }
 
 func TestRunDoctor_DoesNotRequireReadmeDirectoryPath(t *testing.T) {
 	dir := t.TempDir()
-	withWorkingDir(t, dir)
+	resetDoctorFlags(t)
+	doctorDir = dir
 
 	// Ensure we are validating the current working directory and not a hardcoded path.
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); !os.IsNotExist(err) {
@@ -161,4 +144,12 @@ func TestRunDoctor_DoesNotRequireReadmeDirectoryPath(t *testing.T) {
 	if !strings.Contains(c.output(), "README.md not found") {
 		t.Fatalf("expected README not found message, got:\n%s", c.output())
 	}
+}
+
+func resetDoctorFlags(t *testing.T) {
+	t.Helper()
+	doctorDir = "."
+	t.Cleanup(func() {
+		doctorDir = "."
+	})
 }

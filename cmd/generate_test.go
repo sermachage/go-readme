@@ -13,8 +13,8 @@ import (
 func TestRunGenerate_DryRunWritesToCommandOutput(t *testing.T) {
 	dir := t.TempDir()
 	writeCmdFile(t, dir, "go.mod", "module github.com/example/dryrun\n\ngo 1.24\n")
-	withWorkingDir(t, dir)
 	resetGenerateFlags(t)
+	generateDir = dir
 
 	generateDescription = "dry run project"
 	generateDryRun = true
@@ -36,8 +36,8 @@ func TestRunGenerate_DryRunWritesToCommandOutput(t *testing.T) {
 func TestRunGenerate_CreateReadme(t *testing.T) {
 	dir := t.TempDir()
 	writeCmdFile(t, dir, "go.mod", "module github.com/example/project\n\ngo 1.24\n")
-	withWorkingDir(t, dir)
 	resetGenerateFlags(t)
+	generateDir = dir
 
 	generateDescription = "new project"
 
@@ -55,6 +55,32 @@ func TestRunGenerate_CreateReadme(t *testing.T) {
 		t.Fatalf("read README.md: %v", err)
 	}
 	if !strings.Contains(string(got), "new project") {
+		t.Fatalf("README missing expected description, got:\n%s", string(got))
+	}
+}
+
+func TestRunGenerate_UsesConfiguredDir(t *testing.T) {
+	base := t.TempDir()
+	target := filepath.Join(base, "project")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeCmdFile(t, target, "go.mod", "module github.com/example/from-flag\n\ngo 1.24\n")
+	resetGenerateFlags(t)
+	generateDir = target
+	generateDescription = "from dir flag"
+	generateNonInteractive = true
+
+	c := &cobraCommandStub{}
+	if err := runGenerate(c.command(), nil); err != nil {
+		t.Fatalf("runGenerate: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(target, "README.md"))
+	if err != nil {
+		t.Fatalf("read README.md: %v", err)
+	}
+	if !strings.Contains(string(got), "from dir flag") {
 		t.Fatalf("README missing expected description, got:\n%s", string(got))
 	}
 }
@@ -120,12 +146,14 @@ func withWorkingDir(t *testing.T, dir string) {
 func resetGenerateFlags(t *testing.T) {
 	t.Helper()
 	generateDescription = ""
+	generateDir = "."
 	generateTemplate = "go_default.md"
 	generateDryRun = false
 	generateForce = false
 	generateNonInteractive = false
 	t.Cleanup(func() {
 		generateDescription = ""
+		generateDir = "."
 		generateTemplate = "go_default.md"
 		generateDryRun = false
 		generateForce = false

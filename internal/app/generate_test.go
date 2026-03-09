@@ -1,10 +1,16 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sermachage/go-readme/internal/detectors"
+	"github.com/sermachage/go-readme/internal/domain"
+	"github.com/sermachage/go-readme/internal/markers"
+	"github.com/sermachage/go-readme/internal/parser"
 )
 
 func TestGenerate_ErrWhenNotGoModule(t *testing.T) {
@@ -30,7 +36,7 @@ func TestGenerate_DryRunDoesNotWriteReadme(t *testing.T) {
 	if !res.Created {
 		t.Fatal("Created = false, want true for missing README")
 	}
-	if !strings.Contains(res.Content, "<!-- readmeaker:start -->") {
+	if !strings.Contains(res.Content, markers.StartMarker) {
 		t.Fatal("generated content missing managed start marker")
 	}
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); !os.IsNotExist(err) {
@@ -99,7 +105,7 @@ func TestGenerate_ForceOverwritesEntireReadme(t *testing.T) {
 	if strings.Contains(got, "Manual section") {
 		t.Fatal("manual content should be removed with Force=true")
 	}
-	if strings.Contains(got, "<!-- readmeaker:start -->") {
+	if strings.Contains(got, markers.StartMarker) || strings.Contains(got, markers.LegacyStartMarker) {
 		t.Fatal("markers should not be used when Force=true")
 	}
 }
@@ -126,6 +132,52 @@ func TestGenerate_DetectsLicenseCandidates(t *testing.T) {
 	}
 }
 
+func TestGenerateService_UsesInjectedDependencies(t *testing.T) {
+	store := &fakeStore{}
+	s := &GenerateService{
+		Detector: fakeDetector{result: detectors.DetectionResult{IsGoProject: true}},
+		GoMod: fakeGoModReader{
+			info: &parser.GoModInfo{
+				ModulePath: "github.com/example/injected",
+				GoVersion:  "1.24",
+			},
+		},
+		Git:      fakeGitReader{info: &parser.GitInfo{RemoteURL: "https://example.com/repo"}},
+		Renderer: fakeRenderer{content: "generated content"},
+		Store:    store,
+	}
+
+	res, err := s.Generate(GenerateOptions{
+		Dir:    t.TempDir(),
+		DryRun: true,
+	})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+
+	if store.writeCalls != 0 {
+		t.Fatalf("expected no writes during dry-run, got %d", store.writeCalls)
+	}
+	if !strings.Contains(res.Content, "generated content") {
+		t.Fatalf("unexpected result content: %q", res.Content)
+	}
+}
+
+func TestGenerateService_PropagatesDependencyErrors(t *testing.T) {
+	s := &GenerateService{
+		Detector: fakeDetector{result: detectors.DetectionResult{IsGoProject: true}},
+		GoMod:    fakeGoModReader{err: errors.New("gomod parse failed")},
+		Git:      fakeGitReader{info: &parser.GitInfo{}},
+		Renderer: fakeRenderer{content: "generated"},
+		Store:    &fakeStore{},
+	}
+
+	_, err := s.Generate(GenerateOptions{Dir: t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "gomod parse failed") {
+		t.Fatalf("expected gomod parse error, got: %v", err)
+	}
+}
+
 func writeTestFile(t *testing.T, dir, name, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -140,4 +192,54 @@ func mustReadFile(t *testing.T, path string) string {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return string(data)
+}
+
+type fakeDetector struct {
+	result detectors.DetectionResult
+}
+
+func (f fakeDetector) Detect(string) detectors.DetectionResult {
+	return f.result
+}
+
+type fakeGoModReader struct {
+	info *parser.GoModInfo
+	err  error
+}
+
+func (f fakeGoModReader) ParseGoMod(string) (*parser.GoModInfo, error) {
+	return f.info, f.err
+}
+
+type fakeGitReader struct {
+	info *parser.GitInfo
+}
+
+func (f fakeGitReader) ParseGit(string) *parser.GitInfo {
+	return f.info
+}
+
+type fakeRenderer struct {
+	content string
+	err     error
+}
+
+func (f fakeRenderer) Render(string, domain.Project) (string, error) {
+	return f.content, f.err
+}
+
+type fakeStore struct {
+	existing   string
+	readErr    error
+	writeErr   error
+	writeCalls int
+}
+
+func (f *fakeStore) ReadExisting(string) (string, error) {
+	return f.existing, f.readErr
+}
+
+func (f *fakeStore) Write(string, string) error {
+	f.writeCalls++
+	return f.writeErr
 }

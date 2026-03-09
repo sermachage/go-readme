@@ -3,12 +3,14 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sermachage/go-readme/internal/gitmeta"
 )
+
+var doctorDir string
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
@@ -18,12 +20,12 @@ go-readme: go.mod present, git initialised, remote configured, and README valid.
 	Run: runDoctor,
 }
 
+func init() {
+	doctorCmd.Flags().StringVar(&doctorDir, "dir", ".", "target project directory")
+}
+
 func runDoctor(cmd *cobra.Command, _ []string) {
-	dir, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintln(cmd.ErrOrStderr(), "error: cannot determine working directory:", err)
-		return
-	}
+	dir := doctorDir
 
 	allOK := true
 	check := func(label, detail string, ok bool) {
@@ -77,34 +79,23 @@ func runDoctor(cmd *cobra.Command, _ []string) {
 }
 
 func gitRepoStatus(dir string) (bool, string) {
-	out, err := gitOutput(dir, "rev-parse", "--is-inside-work-tree")
+	isRepo, err := gitmeta.IsRepository(dir)
 	if err != nil {
 		return false, "not a git repository (`git init` to create one)"
 	}
-	if strings.TrimSpace(out) != "true" {
+	if !isRepo {
 		return false, "directory is outside a git work tree"
 	}
 	return true, ""
 }
 
 func gitRemoteStatus(dir string) (bool, string) {
-	out, err := gitOutput(dir, "config", "--get", "remote.origin.url")
+	remote, err := gitmeta.RemoteOriginURL(dir)
 	if err != nil {
 		return false, "no remote.origin set (`git remote add origin <url>`)"
 	}
-	remote := strings.TrimSpace(out)
 	if remote == "" {
 		return false, "remote.origin is empty"
 	}
 	return true, remote
-}
-
-func gitOutput(dir string, args ...string) (string, error) {
-	c := exec.Command("git", args...)
-	c.Dir = dir
-	out, err := c.CombinedOutput()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
 }
