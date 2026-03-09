@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	generateDir            string
 	generateDescription    string
 	generateTemplate       string
 	generateDryRun         bool
@@ -29,6 +30,7 @@ idempotently updates) README.md.`,
 }
 
 func init() {
+	generateCmd.Flags().StringVar(&generateDir, "dir", ".", "target project directory")
 	generateCmd.Flags().StringVarP(&generateDescription, "description", "d", "", "project description")
 	generateCmd.Flags().StringVarP(&generateTemplate, "template", "t", "go_default.md", "template file name")
 	generateCmd.Flags().BoolVar(&generateDryRun, "dry-run", false, "print the README without writing to disk")
@@ -37,18 +39,13 @@ func init() {
 }
 
 func runGenerate(cmd *cobra.Command, _ []string) error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	description := generateDescription
 	if description == "" && !generateNonInteractive {
 		description = promptDescription(cmd)
 	}
 
 	opts := app.GenerateOptions{
-		Dir:         dir,
+		Dir:         generateDir,
 		Description: description,
 		Template:    generateTemplate,
 		DryRun:      generateDryRun,

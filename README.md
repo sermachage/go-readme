@@ -24,6 +24,12 @@ Preview without writing:
 go-readme generate --dry-run
 ```
 
+Generate from another directory:
+
+```sh
+go-readme generate --dir ./path/to/module
+```
+
 ### Flags
 
 | Command | Description |
@@ -36,11 +42,18 @@ go-readme generate --dry-run
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--dir` | `.` | Target project directory |
 | `--description`, `-d` | empty | Project description |
 | `--template`, `-t` | `go_default.md` | Embedded template name |
 | `--dry-run` | `false` | Print output without writing README |
 | `--force` | `false` | Overwrite entire README (skip marker replacement) |
 | `--non-interactive` | `false` | Disable interactive prompt |
+
+### Doctor Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dir` | `.` | Target project directory to diagnose |
 
 ## What gets generated
 
