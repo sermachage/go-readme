@@ -11,12 +11,20 @@ import (
 func TestRender_GoDefault(t *testing.T) {
 	renderer := tmpl.NewRenderer()
 	project := domain.Project{
-		Name:        "myproject",
-		ModulePath:  "github.com/example/myproject",
-		GoVersion:   "1.21",
-		RepoURL:     "https://github.com/example/myproject",
-		Description: "A great project",
-		License:     "MIT",
+		Name:                   "myproject",
+		ModulePath:             "github.com/example/myproject",
+		GoVersion:              "1.21",
+		RepoURL:                "https://github.com/example/myproject",
+		Description:            "A great project",
+		Features:               []string{"fast", "friendly"},
+		UsageExample:           "import \"github.com/example/myproject\"",
+		UsageLanguage:          "go",
+		Configuration:          "Set MYPROJECT_ENV before running the CLI.",
+		Dependencies:           []string{"github.com/spf13/cobra"},
+		ContributingGuide:      "CONTRIBUTING.md",
+		SecurityPolicy:         "SECURITY.md",
+		License:                "LICENSE",
+		AdditionalDependencies: 1,
 	}
 
 	got, err := renderer.Render("go_default.md", project)
@@ -27,10 +35,18 @@ func TestRender_GoDefault(t *testing.T) {
 	checks := []string{
 		"# myproject",
 		"A great project",
+		"## Features",
+		"friendly",
+		"## Configuration",
+		"MYPROJECT_ENV",
+		"## Development",
 		"github.com/example/myproject",
 		"Go 1.21",
+		"github.com/spf13/cobra",
 		"https://github.com/example/myproject",
-		"MIT",
+		"CONTRIBUTING.md",
+		"SECURITY.md",
+		"LICENSE",
 	}
 	for _, want := range checks {
 		if !strings.Contains(got, want) {

@@ -14,6 +14,10 @@ import (
 var (
 	generateDir            string
 	generateDescription    string
+	generateFeatures       []string
+	generateUsageExample   string
+	generateConfiguration  string
+	generateContributing   string
 	generateTemplate       string
 	generateDryRun         bool
 	generateForce          bool
@@ -32,6 +36,10 @@ idempotently updates) README.md.`,
 func init() {
 	generateCmd.Flags().StringVar(&generateDir, "dir", ".", "target project directory")
 	generateCmd.Flags().StringVarP(&generateDescription, "description", "d", "", "project description")
+	generateCmd.Flags().StringSliceVar(&generateFeatures, "features", nil, "comma-separated key project features")
+	generateCmd.Flags().StringVar(&generateUsageExample, "usage-example", "", "usage example command or snippet")
+	generateCmd.Flags().StringVar(&generateConfiguration, "configuration", "", "configuration notes")
+	generateCmd.Flags().StringVar(&generateContributing, "contributing-notes", "", "contributing guidance")
 	generateCmd.Flags().StringVarP(&generateTemplate, "template", "t", "go_default.md", "template file name")
 	generateCmd.Flags().BoolVar(&generateDryRun, "dry-run", false, "print the README without writing to disk")
 	generateCmd.Flags().BoolVar(&generateForce, "force", false, "overwrite the entire README (ignore markers)")
@@ -39,17 +47,27 @@ func init() {
 }
 
 func runGenerate(cmd *cobra.Command, _ []string) error {
-	description := generateDescription
-	if description == "" && !generateNonInteractive {
-		description = promptDescription(cmd)
+	answers := generatePromptAnswers{
+		Description:   strings.TrimSpace(generateDescription),
+		Features:      append([]string(nil), generateFeatures...),
+		UsageExample:  strings.TrimSpace(generateUsageExample),
+		Configuration: strings.TrimSpace(generateConfiguration),
+		Contributing:  strings.TrimSpace(generateContributing),
+	}
+	if !generateNonInteractive {
+		answers = promptGenerateMetadata(cmd, answers)
 	}
 
 	opts := app.GenerateOptions{
-		Dir:         generateDir,
-		Description: description,
-		Template:    generateTemplate,
-		DryRun:      generateDryRun,
-		Force:       generateForce,
+		Dir:           generateDir,
+		Description:   answers.Description,
+		Features:      answers.Features,
+		UsageExample:  answers.UsageExample,
+		Configuration: answers.Configuration,
+		Contributing:  answers.Contributing,
+		Template:      generateTemplate,
+		DryRun:        generateDryRun,
+		Force:         generateForce,
 	}
 
 	result, err := app.Generate(opts)
@@ -70,16 +88,71 @@ func runGenerate(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// promptDescription asks the user for a short project description on stdin.
-// Returns an empty string if stdin is not a terminal or the user skips.
-func promptDescription(cmd *cobra.Command) string {
-	if fi, err := os.Stdin.Stat(); err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
-		return ""
+type generatePromptAnswers struct {
+	Description   string
+	Features      []string
+	UsageExample  string
+	Configuration string
+	Contributing  string
+}
+
+// promptGenerateMetadata asks the user for optional README metadata on stdin.
+// Returns the existing answers unchanged if stdin is not a terminal.
+func promptGenerateMetadata(cmd *cobra.Command, answers generatePromptAnswers) generatePromptAnswers {
+	if !stdinIsInteractive() {
+		return answers
 	}
-	fmt.Fprint(cmd.OutOrStdout(), "Project description (leave blank to skip): ")
+
 	scanner := bufio.NewScanner(os.Stdin)
+	if answers.Description == "" {
+		answers.Description = promptLine(cmd, scanner, "Project description (leave blank to auto-detect/skip): ")
+	}
+	if len(answers.Features) == 0 {
+		answers.Features = parsePromptList(promptLine(cmd, scanner, "Key features (comma-separated, leave blank to skip): "))
+	}
+	if answers.UsageExample == "" {
+		answers.UsageExample = promptLine(cmd, scanner, "Usage example or command (leave blank for default): ")
+	}
+	if answers.Configuration == "" {
+		answers.Configuration = promptLine(cmd, scanner, "Configuration notes (leave blank to skip): ")
+	}
+	if answers.Contributing == "" {
+		answers.Contributing = promptLine(cmd, scanner, "Contributing notes (leave blank to skip): ")
+	}
+	return answers
+}
+
+func stdinIsInteractive() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
+}
+
+func promptLine(cmd *cobra.Command, scanner *bufio.Scanner, prompt string) string {
+	fmt.Fprint(cmd.OutOrStdout(), prompt)
 	if scanner.Scan() {
 		return strings.TrimSpace(scanner.Text())
 	}
 	return ""
+}
+
+func parsePromptList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == '\n'
+	})
+	items := make([]string, 0, len(parts))
+	for _, part := range parts {
+		item := strings.TrimSpace(part)
+		if item == "" {
+			continue
+		}
+		items = append(items, item)
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	return items
 }

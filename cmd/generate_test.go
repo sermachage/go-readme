@@ -85,7 +85,7 @@ func TestRunGenerate_UsesConfiguredDir(t *testing.T) {
 	}
 }
 
-func TestPromptDescription_NonTTYReturnsEmpty(t *testing.T) {
+func TestPromptGenerateMetadata_NonTTYReturnsEmpty(t *testing.T) {
 	originalStdin := os.Stdin
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -99,12 +99,25 @@ func TestPromptDescription_NonTTYReturnsEmpty(t *testing.T) {
 	})
 
 	c := &cobraCommandStub{}
-	got := promptDescription(c.command())
-	if got != "" {
-		t.Fatalf("promptDescription = %q, want empty string for non-tty stdin", got)
+	got := promptGenerateMetadata(c.command(), generatePromptAnswers{})
+	if got.Description != "" || len(got.Features) != 0 || got.UsageExample != "" || got.Configuration != "" || got.Contributing != "" {
+		t.Fatalf("promptGenerateMetadata = %#v, want zero values for non-tty stdin", got)
 	}
 	if c.output() != "" {
 		t.Fatalf("expected no prompt output for non-tty stdin, got: %q", c.output())
+	}
+}
+
+func TestParsePromptList(t *testing.T) {
+	got := parsePromptList("fast, simple,\nportable")
+	want := []string{"fast", "simple", "portable"}
+	if len(got) != len(want) {
+		t.Fatalf("parsePromptList length = %d, want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("parsePromptList[%d] = %q, want %q", i, got[i], want[i])
+		}
 	}
 }
 
@@ -146,6 +159,10 @@ func withWorkingDir(t *testing.T, dir string) {
 func resetGenerateFlags(t *testing.T) {
 	t.Helper()
 	generateDescription = ""
+	generateFeatures = nil
+	generateUsageExample = ""
+	generateConfiguration = ""
+	generateContributing = ""
 	generateDir = "."
 	generateTemplate = "go_default.md"
 	generateDryRun = false
@@ -153,6 +170,10 @@ func resetGenerateFlags(t *testing.T) {
 	generateNonInteractive = false
 	t.Cleanup(func() {
 		generateDescription = ""
+		generateFeatures = nil
+		generateUsageExample = ""
+		generateConfiguration = ""
+		generateContributing = ""
 		generateDir = "."
 		generateTemplate = "go_default.md"
 		generateDryRun = false

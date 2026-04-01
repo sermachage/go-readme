@@ -1,8 +1,9 @@
 # go-readme
 
 `go-readme` is a README automation CLI for Go modules. It parses project metadata
-from `go.mod` and git, renders a template, and idempotently updates `README.md`
-between managed markers so custom content is preserved.
+from `go.mod`, git, Go source, and common repo files, renders a template, and
+idempotently updates `README.md` between managed markers so custom content is
+preserved.
 
 If you are new to the project, start with `go-readme generate --dry-run` to see
 what will be written before changing any files.
@@ -52,6 +53,10 @@ Run from inside a Go module to generate or update `README.md`:
 go-readme generate
 ```
 
+In interactive mode, `go-readme` now asks for a short project description, key
+features, a usage example, configuration notes, and contributing notes when
+those values were not already supplied by flags.
+
 Preview without writing:
 
 ```sh
@@ -78,10 +83,14 @@ go-readme generate --dir ./path/to/module
 |------|---------|-------------|
 | `--dir` | `.` | Target project directory |
 | `--description`, `-d` | empty | Project description |
+| `--features` | empty | Comma-separated key project features |
+| `--usage-example` | empty | Usage command or code snippet |
+| `--configuration` | empty | Configuration notes |
+| `--contributing-notes` | empty | Contributor guidance |
 | `--template`, `-t` | `go_default.md` | Embedded template name |
 | `--dry-run` | `false` | Print output without writing README |
 | `--force` | `false` | Overwrite entire README (skip marker replacement) |
-| `--non-interactive` | `false` | Disable interactive prompt |
+| `--non-interactive` | `false` | Disable the interactive questionnaire |
 
 ### Doctor Flags
 
@@ -91,10 +100,18 @@ go-readme generate --dir ./path/to/module
 
 ## What gets generated
 
-- **Title / metadata** — module name, install command, go version
-- **Repository** — git remote URL when configured
-- **Description** — from flag or interactive prompt
-- **License** — detected from license file name
+- **Overview** — project name plus description from a flag, prompt, or package
+  doc comment fallback
+- **Features** — optional bullet list from prompt or `--features`
+- **Installation / usage** — install command plus a smarter default usage
+  example that can be overridden
+- **Configuration / development** — optional config notes plus standard Go
+  build and test commands
+- **Requirements / dependencies** — Go version and direct dependencies from
+  `go.mod`
+- **Repository / contributing / security** — git remote plus links to
+  `CONTRIBUTING.md` and `SECURITY.md` when present
+- **License** — detected from the license file name and linked in the output
 
 ## Managed markers (beginner-friendly)
 
