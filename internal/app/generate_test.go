@@ -132,6 +132,85 @@ func TestGenerate_DetectsLicenseCandidates(t *testing.T) {
 	}
 }
 
+func TestGenerate_RendersRicherMetadataSections(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "go.mod", strings.Join([]string{
+		"module github.com/example/richreadme",
+		"",
+		"go 1.24",
+		"",
+		"require (",
+		"\tgithub.com/charmbracelet/bubbletea v1.3.4",
+		"\tgithub.com/spf13/cobra v1.9.1",
+		")",
+	}, "\n"))
+	writeTestFile(t, dir, "main.go", strings.Join([]string{
+		"// Package main provides a friendly README generator.",
+		"package main",
+		"",
+		"func main() {}",
+	}, "\n"))
+	writeTestFile(t, dir, "CONTRIBUTING.md", "Open a pull request.")
+	writeTestFile(t, dir, "SECURITY.md", "Email security@example.com.")
+	writeTestFile(t, dir, "LICENSE", "MIT")
+
+	res, err := Generate(GenerateOptions{
+		Dir:           dir,
+		Features:      []string{"interactive prompts", "template-driven output"},
+		Configuration: "Set `README_TEMPLATE` if you want a custom template path.",
+		Contributing:  "Please open an issue before larger changes.",
+		DryRun:        true,
+	})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+
+	checks := []string{
+		"Package main provides a friendly README generator.",
+		"## Features",
+		"interactive prompts",
+		"template-driven output",
+		"```sh\nrichreadme --help",
+		"## Configuration",
+		"README_TEMPLATE",
+		"## Development",
+		"go test ./...",
+		"## Dependencies",
+		"github.com/charmbracelet/bubbletea",
+		"github.com/spf13/cobra",
+		"## Contributing",
+		"Please open an issue before larger changes.",
+		"[CONTRIBUTING.md](CONTRIBUTING.md)",
+		"## Security",
+		"[SECURITY.md](SECURITY.md)",
+		"## License",
+		"[LICENSE](LICENSE)",
+	}
+	for _, want := range checks {
+		if !strings.Contains(res.Content, want) {
+			t.Fatalf("generated README missing %q\nfull output:\n%s", want, res.Content)
+		}
+	}
+}
+
+func TestGenerate_UsesCustomUsageExample(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, dir, "go.mod", "module github.com/example/library\n\ngo 1.24\n")
+
+	res, err := Generate(GenerateOptions{
+		Dir:          dir,
+		UsageExample: "go test ./...",
+		DryRun:       true,
+	})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+
+	if !strings.Contains(res.Content, "```sh\ngo test ./...\n```") {
+		t.Fatalf("expected shell fenced custom usage example, got:\n%s", res.Content)
+	}
+}
+
 func TestGenerateService_UsesInjectedDependencies(t *testing.T) {
 	store := &fakeStore{}
 	s := &GenerateService{
