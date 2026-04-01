@@ -9,6 +9,8 @@ what will be written before changing any files.
 
 ## Installation
 
+`go-readme` requires Go 1.24 or newer.
+
 ```sh
 go install -v github.com/sermachage/go-readme/cmd/go-readme@latest
 ```
@@ -25,6 +27,16 @@ complete.
 >
 > Add that line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it
 > permanent.
+
+> **Install failed with `permission denied` or `read-only file system`?**
+> `go install` writes the binary to your Go bin directory. If the default
+> location is not writable, install to a writable directory instead:
+>
+> ```sh
+> mkdir -p "$HOME/.local/bin"
+> GOBIN="$HOME/.local/bin" go install -v github.com/sermachage/go-readme/cmd/go-readme@latest
+> export PATH="$HOME/.local/bin:$PATH"
+> ```
 
 Verify the installation:
 
